@@ -501,7 +501,7 @@ class BorutaPy(BaseEstimator, TransformerMixin):
         # shuffle xSha
         # sparse.hstack([sklearn.utils.shuffle(X_sparse[:5, [i]]) for i in range(5)])
         # x_sha = np.apply_along_axis(self._get_shuffle, 0, x_sha)
-        x_sha = sparse.hstack([shuffle(x_sha[:, i]) for i in range(x_sha.shape[1])])
+        x_sha = sparse.hstack([shuffle(x_sha[:, i], random_state=self.random_state) for i in range(x_sha.shape[1])])
         # get importance of the merged matrix
         imp = self._get_imp(sparse.hstack((x_cur, x_sha)), y)
         # separate importances of real and shadow features
