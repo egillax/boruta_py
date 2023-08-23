@@ -11,7 +11,8 @@ License: BSD 3 clause
 from __future__ import print_function, division
 import numpy as np
 import scipy as sp
-from sklearn.utils import check_random_state, check_X_y
+from scipy import sparse
+from sklearn.utils import check_random_state, check_X_y, shuffle
 from sklearn.base import TransformerMixin, BaseEstimator
 import warnings
 
@@ -287,7 +288,7 @@ class BorutaPy(BaseEstimator, TransformerMixin):
         # check input params
         self._check_params(X, y)
 
-        if not isinstance(X, np.ndarray):
+        if not isinstance(X, np.ndarray) and not sparse.issparse(X):
             X = self._validate_pandas_input(X) 
         if not isinstance(y, np.ndarray):
             y = self._validate_pandas_input(y)
@@ -490,17 +491,19 @@ class BorutaPy(BaseEstimator, TransformerMixin):
     def _add_shadows_get_imps(self, X, y, dec_reg):
         # find features that are tentative still
         x_cur_ind = np.where(dec_reg >= 0)[0]
-        x_cur = np.copy(X[:, x_cur_ind])
+        x_cur = X[:, x_cur_ind].copy()
         x_cur_w = x_cur.shape[1]
         # deep copy the matrix for the shadow matrix
-        x_sha = np.copy(x_cur)
+        x_sha = x_cur.copy()
         # make sure there's at least 5 columns in the shadow matrix for
         while (x_sha.shape[1] < 5):
-            x_sha = np.hstack((x_sha, x_sha))
+            x_sha = sparse.hstack((x_sha, x_sha))
         # shuffle xSha
-        x_sha = np.apply_along_axis(self._get_shuffle, 0, x_sha)
+        # sparse.hstack([sklearn.utils.shuffle(X_sparse[:5, [i]]) for i in range(5)])
+        # x_sha = np.apply_along_axis(self._get_shuffle, 0, x_sha)
+        x_sha = sparse.hstack([shuffle(x_sha[:, i]) for i in range(x_sha.shape[1])])
         # get importance of the merged matrix
-        imp = self._get_imp(np.hstack((x_cur, x_sha)), y)
+        imp = self._get_imp(sparse.hstack((x_cur, x_sha)), y)
         # separate importances of real and shadow features
         imp_sha = imp[x_cur_w:]
         imp_real = np.zeros(X.shape[1])
@@ -605,7 +608,7 @@ class BorutaPy(BaseEstimator, TransformerMixin):
         Check hyperparameters as well as X and y before proceeding with fit.
         """
         # check X and y are consistent len, X is Array and y is column
-        X, y = check_X_y(X, y)
+        X, y = check_X_y(X, y, accept_sparse=True)
         if self.perc <= 0 or self.perc > 100:
             raise ValueError('The percentile should be between 0 and 100.')
 
