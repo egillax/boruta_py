@@ -499,9 +499,7 @@ class BorutaPy(BaseEstimator, TransformerMixin):
         while (x_sha.shape[1] < 5):
             x_sha = sparse.hstack((x_sha, x_sha))
         # shuffle xSha
-        # sparse.hstack([sklearn.utils.shuffle(X_sparse[:5, [i]]) for i in range(5)])
-        # x_sha = np.apply_along_axis(self._get_shuffle, 0, x_sha)
-        x_sha = sparse.hstack([shuffle(x_sha[:, i], random_state=self.random_state) for i in range(x_sha.shape[1])])
+        x_sha = self.shuffle_sparse_matrix(x_sha)
         # get importance of the merged matrix
         imp = self._get_imp(sparse.hstack((x_cur, x_sha)), y)
         # separate importances of real and shadow features
@@ -510,6 +508,14 @@ class BorutaPy(BaseEstimator, TransformerMixin):
         imp_real[:] = np.nan
         imp_real[x_cur_ind] = imp[:x_cur_w]
         return imp_real, imp_sha
+
+    def shuffle_sparse_matrix(self, x_sha):
+        sparse_list = [x_sha[:, i] for i in range(x_sha.shape[1])]
+        shuffled = sparse.lil_array(x_sha.shape)
+        for i, matrix in enumerate(sparse_list):
+            shuffled[:, i] = shuffle(matrix, random_state=self.random_state)
+        x_sha = shuffled.tocsc()
+        return x_sha
 
     def _assign_hits(self, hit_reg, cur_imp, imp_sha_max):
         # register hits for features that did better than the best of shadows
